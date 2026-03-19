@@ -18,7 +18,7 @@ from typing import List, Dict, Tuple
 logger = logging.getLogger(__name__)
 
 # File paths
-DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
+DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
 INPUT_FILE = os.path.join(DATA_DIR, 'final', 'jobs.csv')
 OUTPUT_FILE = os.path.join(DATA_DIR, 'final', 'jobs_cleaned.csv')
 
@@ -112,7 +112,9 @@ class DataCleaner:
             pd.DataFrame: Deduplicated data
         """
         before = len(self.df)
-        df = self.df.drop_duplicates(subset=['job_url'], keep='first')
+        # Handle both 'job_url' and 'job_link' column names
+        dup_col = 'job_url' if 'job_url' in self.df.columns else 'job_link'
+        df = self.df.drop_duplicates(subset=[dup_col], keep='first')
         after = len(df)
         
         logger.info(f"   Removed {before - after} duplicate URLs")
@@ -232,8 +234,9 @@ class DataCleaner:
         """
         before = len(self.df)
         
-        # Must have job title and URL
-        self.df = self.df.dropna(subset=['job_title', 'job_url'])
+        # Must have job title and URL (handle both 'job_url' and 'job_link')
+        url_col = 'job_url' if 'job_url' in self.df.columns else 'job_link'
+        self.df = self.df.dropna(subset=['job_title', url_col])
         
         # Job title must be reasonable length
         self.df = self.df[self.df['job_title'].str.len() > 3]

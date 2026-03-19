@@ -9,7 +9,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.firefox import GeckoDriverManager
-from selenium.webdriver.service import Service
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.firefox.service import Service as FirefoxService
 #-----------------
 #from selenium.webdriver.chrome.service import Service
 #from selenium.webdriver.chrome.options import Options
@@ -58,7 +59,7 @@ class SeleniumDriver:
                 options.add_argument('--disable-blink-features=AutomationControlled')
                 options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36')
                 
-                service = Service(ChromeDriverManager().install())
+                service = ChromeService(ChromeDriverManager().install())
                 self.driver = webdriver.Chrome(service=service, options=options)
                 
             elif self.browser == 'firefox':
@@ -67,7 +68,7 @@ class SeleniumDriver:
                     options.add_argument('--headless')
                 options.add_argument('--no-sandbox')
                 
-                service = Service(GeckoDriverManager().install())
+                service = FirefoxService(GeckoDriverManager().install())
                 self.driver = webdriver.Firefox(service=service, options=options)
             else:
                 raise ValueError(f"Unsupported browser: {self.browser}")

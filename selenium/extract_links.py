@@ -81,9 +81,9 @@ class LinkExtractor:
                 links = extractor.extract_links()
                 self.all_links['greenhouse'] = links
                 self.total_links += len(links)
-                logger.info(f"✓ Greenhouse: {len(links)} links extracted")
+                logger.info(f"[OK] Greenhouse: {len(links)} links extracted")
         except Exception as e:
-            logger.error(f"✗ Greenhouse extraction failed: {e}")
+            logger.error(f"[FAILED] Greenhouse extraction failed: {e}")
             self.all_links['greenhouse'] = []
     
     def _extract_ashby(self):
@@ -93,9 +93,9 @@ class LinkExtractor:
                 links = extractor.extract_links()
                 self.all_links['ashby'] = links
                 self.total_links += len(links)
-                logger.info(f"✓ Ashby: {len(links)} links extracted")
+                logger.info(f"[OK] Ashby: {len(links)} links extracted")
         except Exception as e:
-            logger.error(f"✗ Ashby extraction failed: {e}")
+            logger.error(f"[FAILED] Ashby extraction failed: {e}")
             self.all_links['ashby'] = []
     
     def _extract_punjab(self):
@@ -105,9 +105,9 @@ class LinkExtractor:
                 links = extractor.extract_links()
                 self.all_links['punjab'] = links
                 self.total_links += len(links)
-                logger.info(f"✓ Punjab Jobs: {len(links)} links extracted")
+                logger.info(f"[OK] Punjab Jobs: {len(links)} links extracted")
         except Exception as e:
-            logger.error(f"✗ Punjab Jobs extraction failed: {e}")
+            logger.error(f"[FAILED] Punjab Jobs extraction failed: {e}")
             self.all_links['punjab'] = []
     
     def save_to_csv(self) -> str:
@@ -145,7 +145,7 @@ class LinkExtractor:
                 writer.writeheader()
                 writer.writerows(unique_rows.values())
             
-            logger.info(f"✓ Saved {len(unique_rows)} unique links to {OUTPUT_FILE}")
+            logger.info(f"[OK] Saved {len(unique_rows)} unique links to {OUTPUT_FILE}")
             return OUTPUT_FILE
             
         except Exception as e:
@@ -165,7 +165,7 @@ class LinkExtractor:
         print(f"{'TOTAL':12} {self.total_links:>4} links")
         print("=" * 70)
         
-        print(f"\n✓ CSV saved to: {OUTPUT_FILE}")
+        print(f"\n[SUCCESS] CSV saved to: {OUTPUT_FILE}")
         print("\nTo view links:")
         print(f"  head -20 {OUTPUT_FILE}")
 
@@ -193,7 +193,7 @@ def main():
         # Print summary
         extractor.print_summary()
         
-        logger.info("\n✓ Link extraction completed successfully!")
+        logger.info("\n[OK] Link extraction completed successfully!")
         
     except Exception as e:
         logger.error(f"Fatal error: {e}", exc_info=True)

@@ -237,7 +237,8 @@ def main():
         exit(1)
     
     finally:
-        extractor.close()
+        if 'extractor' in locals():
+            extractor.close()
 
 
 if __name__ == "__main__":

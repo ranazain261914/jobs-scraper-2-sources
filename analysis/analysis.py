@@ -18,9 +18,9 @@ import json
 logger = logging.getLogger(__name__)
 
 # File paths
-DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+DATA_DIR = os.path.join(os.path.dirname(__file__), '..', 'data')
 INPUT_FILE = os.path.join(DATA_DIR, 'final', 'jobs_cleaned.csv')
-OUTPUT_DIR = os.path.join(os.path.dirname(__file__), 'analysis')
+OUTPUT_DIR = os.path.join(os.path.dirname(__file__))
 RESULTS_FILE = os.path.join(OUTPUT_DIR, 'analysis_results.json')
 
 
@@ -51,7 +51,22 @@ class JobAnalyzer:
                 return False
             
             self.df = pd.read_csv(self.input_file)
-            logger.info(f"✓ Loaded {len(self.df)} records")
+            
+            # Standardize column names for compatibility
+            column_mapping = {
+                'company': 'company_name',
+                'skills': 'required_skills',
+                'job_link': 'url',
+                'job_url': 'url',
+                'job_type': 'employment_type'
+            }
+            self.df.rename(columns=column_mapping, inplace=True)
+            
+            # Add extracted_at if it doesn't exist
+            if 'extracted_at' not in self.df.columns:
+                self.df['extracted_at'] = pd.Timestamp.now()
+            
+            logger.info(f"[OK] Loaded {len(self.df)} records")
             return True
         
         except Exception as e:
@@ -214,7 +229,10 @@ class JobAnalyzer:
         entry_level = 0
         for _, row in self.df.iterrows():
             title = str(row['job_title']).lower()
-            exp_level = str(row['experience_level']).lower() if pd.notna(row['experience_level']) else ''
+            # Handle missing experience_level column
+            exp_level = ''
+            if 'experience_level' in self.df.columns:
+                exp_level = str(row['experience_level']).lower() if pd.notna(row['experience_level']) else ''
             
             if any(keyword in title or keyword in exp_level for keyword in entry_keywords):
                 entry_level += 1
