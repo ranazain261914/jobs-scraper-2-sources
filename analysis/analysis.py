@@ -252,14 +252,17 @@ class JobAnalyzer:
         Returns:
             List: Experience level distribution
         """
-        exp_dist = self.df['experience_level'].dropna().value_counts()
+        result = []
+        if 'experience_level' in self.df.columns:
+            exp_dist = self.df['experience_level'].dropna().value_counts()
+            result = [
+                {'level': level, 'count': int(count)}
+                for level, count in exp_dist.items()
+            ]
+            logger.info("   Experience level distribution calculated")
+        else:
+            logger.info("   Experience level column not available")
         
-        result = [
-            {'level': level, 'count': int(count)}
-            for level, count in exp_dist.items()
-        ]
-        
-        logger.info("   Experience level distribution calculated")
         return result
     
     def _get_source_distribution(self) -> List[Dict]:
@@ -269,7 +272,7 @@ class JobAnalyzer:
         Returns:
             List: Source distribution
         """
-        source_dist = self.df['source'].value_counts()
+        source_dist = self.df['source'].value_counts() if 'source' in self.df.columns else pd.Series()
         
         result = [
             {'source': source, 'count': int(count)}
