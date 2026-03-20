@@ -49,6 +49,8 @@ temp/
 
 # Data files (raw extracted links, intermediate files)
 data/raw/*.csv
+!all_jobs.csv
+!all_links.csv
 
 # Logs
 logs/

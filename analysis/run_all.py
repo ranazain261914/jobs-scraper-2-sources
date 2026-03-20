@@ -70,14 +70,17 @@ class JobPipelineManager:
         print("📥 PHASE 1: JOB SCRAPING")
         print("="*80)
         
+        # Define scrapers with their scripts and descriptions
         scrapers = [
-            ('selenium.scraper_punjab', 'Punjab Jobs Portal'),
-            ('selenium.scraper_greenhouse', 'Greenhouse/Remote.com'),
-            ('selenium.scraper_ashby', 'Ashby Careers Platform'),
+            ('selenium/scraper_punjab.py', 'Punjab Jobs Portal'),
+            ('selenium/scraper_greenhouse.py', 'Greenhouse/Remote.com'),
+            ('selenium/scraper_ashby.py', 'Ashby Careers Platform'),
         ]
         
-        for module, description in scrapers:
-            cmd = f"python -m {module}"
+        for script_path, description in scrapers:
+            # Call scrapers directly as Python scripts
+            full_path = self.base_dir / script_path
+            cmd = f"python \"{full_path}\""
             success = self.run_command(cmd, f"Scraping {description}")
             self.results['scraping'][description] = success
             if success:
