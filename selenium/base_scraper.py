@@ -5,6 +5,7 @@ Base Scraper Class - Common functionality for all scrapers
 import logging
 import csv
 import time
+import sys
 from datetime import datetime
 from abc import ABC, abstractmethod
 from pathlib import Path

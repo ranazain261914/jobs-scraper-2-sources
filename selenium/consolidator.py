@@ -6,10 +6,18 @@ Consolidates job data from all sources into unified CSV files
 
 import logging
 import csv
+import sys
 from pathlib import Path
 from datetime import datetime
 
-from config import OUTPUT_FILES, RAW_DATA_DIR, FINAL_DATA_DIR
+# Add current directory to path for local imports
+sys.path.insert(0, str(Path(__file__).parent))
+
+try:
+    from config import OUTPUT_FILES, RAW_DATA_DIR, FINAL_DATA_DIR
+except ImportError:
+    # Fallback for when imported from parent directory
+    from selenium.config import OUTPUT_FILES, RAW_DATA_DIR, FINAL_DATA_DIR
 
 
 class JobConsolidator:

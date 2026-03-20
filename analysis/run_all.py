@@ -70,9 +70,9 @@ class JobPipelineManager:
         print("="*80)
         
         scrapers = [
-            ('scrapers.scraper_punjab', 'Punjab Jobs Portal'),
-            ('scrapers.scraper_greenhouse', 'Greenhouse/Remote.com'),
-            ('scrapers.scraper_ashby', 'Ashby Careers Platform'),
+            ('selenium.scraper_punjab', 'Punjab Jobs Portal'),
+            ('selenium.scraper_greenhouse', 'Greenhouse/Remote.com'),
+            ('selenium.scraper_ashby', 'Ashby Careers Platform'),
         ]
         
         for module, description in scrapers:
@@ -93,12 +93,27 @@ class JobPipelineManager:
         print("🔗 PHASE 2: DATA CONSOLIDATION")
         print("="*80)
         
-        cmd = "python -m utilities.consolidator"
-        success = self.run_command(cmd, "Consolidating job data from all sources")
-        self.results['consolidation']['consolidator'] = success
-        
-        if success:
+        # Run consolidation directly to avoid subprocess encoding issues
+        try:
+            # Import from selenium module
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, str(Path(__file__).parent.parent / 'selenium'))
+            
+            from consolidator import JobConsolidator
+            
+            consolidator = JobConsolidator()
+            consolidator.consolidate_links()
+            consolidator.consolidate_jobs()
+            
+            print(f"✅ Consolidating job data from all sources - SUCCESS")
             print("\n✓ Consolidation complete")
+            self.results['consolidation']['consolidator'] = True
+        
+        except Exception as e:
+            print(f"❌ Consolidating job data from all sources - FAILED")
+            print(f"Error: {e}")
+            self.results['consolidation']['consolidator'] = False
     
     def run_analysis(self):
         """Run job market analysis"""

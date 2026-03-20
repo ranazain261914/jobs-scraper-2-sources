@@ -15,8 +15,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 
-from scrapers.base_scraper import BaseScraper
-from config import WEBSITES, OUTPUT_FILES, TIMEOUTS
+try:
+    from base_scraper import BaseScraper
+    from config import WEBSITES, OUTPUT_FILES, TIMEOUTS
+except ImportError:
+    from selenium.base_scraper import BaseScraper
+    from selenium.config import WEBSITES, OUTPUT_FILES, TIMEOUTS
 
 
 class PunjabScraper(BaseScraper):

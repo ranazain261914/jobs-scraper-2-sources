@@ -5,8 +5,8 @@ Configuration file for job scraping system
 import os
 from pathlib import Path
 
-# Project directories
-PROJECT_ROOT = Path(__file__).parent.resolve()
+# Project directories - go up one level from selenium/ to project root
+PROJECT_ROOT = Path(__file__).parent.parent.resolve()
 DATA_DIR = PROJECT_ROOT / "data"
 RAW_DATA_DIR = DATA_DIR / "raw"
 FINAL_DATA_DIR = DATA_DIR / "final"
