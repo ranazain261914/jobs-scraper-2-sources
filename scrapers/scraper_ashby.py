@@ -76,65 +76,50 @@ class AshbyScraper(BaseScraper):
             self.driver = self._setup_driver()
             self.load_page()
             
-            # Enable network logging
-            time.sleep(3)
+            # Wait for content
+            time.sleep(4)
             
-            # Capture network logs
+            # Try to find API endpoint from network or page source
             self.logger.info("  Analyzing page for API endpoints...")
             
-            # Try to find API endpoint from page
+            # Get page source and look for API calls
             page_source = self.get_page_source()
+            if not page_source:
+                return []
+            
             soup = BeautifulSoup(page_source, 'html.parser')
             
-            # Look for script tags with API configuration
-            scripts = soup.find_all('script')
-            api_jobs = None
+            # Try common Ashby API endpoints
+            api_endpoints = [
+                'https://api.ashbyhq.com/jobs',
+                'https://api.ashbyhq.com/api/jobs',
+                'https://www.ashbyhq.com/api/jobs',
+                'https://api.ashbyhq.com/job-postings',
+            ]
             
-            for script in scripts:
-                if script.string:
-                    # Look for jobs data in script
-                    if 'jobs' in script.string.lower() and '{' in script.string:
-                        try:
-                            # Try to extract JSON
-                            json_matches = re.findall(r'\{.*?"jobs".*?\}', script.string, re.DOTALL)
-                            for json_str in json_matches[:1]:  # Try first match
-                                data = json.loads(json_str)
-                                if 'jobs' in data:
-                                    api_jobs = data['jobs']
-                                    break
-                        except:
-                            pass
-            
-            # If found via page source, parse it
-            if api_jobs:
-                return self._parse_api_jobs(api_jobs)
-            
-            # Try direct API call
-            self.logger.info("  Trying direct API requests...")
-            for api_url in self.ASHBY_API_URLS:
+            for api_url in api_endpoints:
                 try:
+                    self.logger.info(f"  Trying API: {api_url}...")
                     response = requests.get(
                         api_url,
                         timeout=10,
-                        headers={'User-Agent': 'Mozilla/5.0'}
+                        headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
                     )
+                    
                     if response.status_code == 200:
                         data = response.json()
+                        self.logger.info(f"  ✓ Found API endpoint: {api_url}")
                         
-                        # Different API structures possible
+                        # Parse based on response structure
                         if isinstance(data, list):
-                            jobs = data
+                            return self._parse_api_jobs(data)
                         elif isinstance(data, dict):
-                            # Look for jobs key
-                            jobs = data.get('jobs') or data.get('data') or data.get('results') or []
-                        else:
-                            continue
-                        
-                        if jobs:
-                            self.logger.info(f"  ✓ Found API endpoint: {api_url}")
-                            return self._parse_api_jobs(jobs)
+                            # Try common key patterns
+                            for key in ['jobs', 'data', 'results', 'postings']:
+                                if key in data:
+                                    return self._parse_api_jobs(data[key])
                 
-                except requests.RequestException:
+                except (requests.RequestException, ValueError):
                     continue
         
         except Exception as e:

@@ -20,8 +20,8 @@ LOGS_DIR.mkdir(parents=True, exist_ok=True)
 # Target websites
 WEBSITES = {
     'greenhouse': {
-        'url': 'https://www.greenhouse.com/careers/opportunities',
-        'name': 'Greenhouse',
+        'url': 'https://job-boards.greenhouse.io/remotecom',
+        'name': 'Greenhouse Remote.com',
         'driver_wait_time': 10
     },
     'ashby': {

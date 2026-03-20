@@ -43,14 +43,22 @@ class GreenhouseScraper(BaseScraper):
             
             # Wait for jobs to load
             self.logger.info("[STEP 1] Waiting for jobs to load...")
-            time.sleep(4)  # Let React render
+            time.sleep(6)  # Increased from 4
             
-            # Try to find a "load more" button and click it
+            # Try to find a "load more" button and click it multiple times
             self.logger.info("[STEP 2] Checking for load more button...")
             self._load_all_jobs()
             
+            # Wait more for content to settle
+            time.sleep(2)
+            
             # Get page source
             page_source = self.get_page_source()
+            if not page_source or len(page_source) < 1000:
+                self.logger.warning("  Page source seems empty, retrying...")
+                time.sleep(3)
+                page_source = self.get_page_source()
+            
             if not page_source:
                 return []
             
@@ -95,44 +103,41 @@ class GreenhouseScraper(BaseScraper):
         job_links = []
         seen_urls = set()
         
-        # Strategy 1: Look for job sections/cards
-        # Greenhouse typically uses divs with job information
-        job_sections = soup.find_all('div', class_=re.compile('job', re.I))
-        self.logger.info(f"  Found {len(job_sections)} potential job sections")
+        # Strategy 1: Look for job containers with data-job-id (Greenhouse standard)
+        job_containers = soup.find_all('div', {'data-job-id': True})
+        self.logger.info(f"  Found {len(job_containers)} job containers with data-job-id")
         
-        for section in job_sections:
-            links = section.find_all('a', href=True)
-            for link in links:
+        for container in job_containers:
+            link = container.find('a', href=True)
+            if link:
                 href = link.get('href', '').strip()
                 text = link.get_text(strip=True)
                 
-                # Validate link
-                if not href or len(text) < 3:
-                    continue
-                
-                # Normalize URL
-                href = self._normalize_url(href)
-                
-                if href and href not in seen_urls:
-                    seen_urls.add(href)
-                    job_links.append({
-                        'url': href,
-                        'source': 'greenhouse',
-                        'extracted_at': datetime.now().isoformat()
-                    })
+                if href and len(text) > 0:
+                    # Normalize URL
+                    href = self._normalize_url(href)
+                    
+                    if href and href not in seen_urls:
+                        seen_urls.add(href)
+                        job_links.append({
+                            'url': href,
+                            'source': 'greenhouse',
+                            'extracted_at': datetime.now().isoformat()
+                        })
         
-        # Strategy 2: If few links found, try broader search
-        if len(job_links) < 3:
-            self.logger.info("  Using fallback strategy to find job links...")
-            all_links = soup.find_all('a', href=True)
+        # Strategy 2: Look for job-related div sections
+        if len(job_links) < 2:
+            self.logger.info("  Using fallback: looking for job-related sections...")
+            job_sections = soup.find_all('div', class_=re.compile(r'job|position|opportunity', re.I))
+            self.logger.info(f"  Found {len(job_sections)} potential job sections")
             
-            for link in all_links:
-                href = link.get('href', '').strip()
-                text = link.get_text(strip=True)
-                
-                # Look for job-related links
-                if any(keyword in href.lower() for keyword in ['job', 'opportunity', 'position']):
-                    if len(text) >= 3 and not any(skip in text.lower() for skip in ['all jobs', 'categories']):
+            for section in job_sections[:100]:
+                links = section.find_all('a', href=True)
+                for link in links:
+                    href = link.get('href', '').strip()
+                    text = link.get_text(strip=True)
+                    
+                    if href and len(text) >= 2:
                         href = self._normalize_url(href)
                         
                         if href and href not in seen_urls:
@@ -142,6 +147,38 @@ class GreenhouseScraper(BaseScraper):
                                 'source': 'greenhouse',
                                 'extracted_at': datetime.now().isoformat()
                             })
+        
+        # Strategy 3: Broad search for job-related links
+        if len(job_links) < 2:
+            self.logger.info("  Using broad fallback: searching all links...")
+            all_links = soup.find_all('a', href=True)
+            
+            for link in all_links:
+                href = link.get('href', '').strip()
+                text = link.get_text(strip=True)
+                
+                # Look for job-related patterns
+                url_lower = href.lower()
+                text_lower = text.lower()
+                
+                # Check for job-related keywords
+                job_keywords = ['job', 'position', 'opportunity', 'opening', 'vacancy']
+                has_job_keyword = any(kw in url_lower or kw in text_lower for kw in job_keywords)
+                
+                # Exclude navigation links
+                exclude_keywords = ['contact', 'privacy', 'terms', 'category', 'all jobs', 'home', 'blog', '#']
+                should_exclude = any(ex in text_lower or href.endswith(ex) for ex in exclude_keywords)
+                
+                if has_job_keyword and not should_exclude and len(text) >= 2:
+                    href = self._normalize_url(href)
+                    
+                    if href and href not in seen_urls:
+                        seen_urls.add(href)
+                        job_links.append({
+                            'url': href,
+                            'source': 'greenhouse',
+                            'extracted_at': datetime.now().isoformat()
+                        })
         
         return job_links
     
@@ -166,59 +203,72 @@ class GreenhouseScraper(BaseScraper):
         Returns:
             Dictionary of job data
         """
-        try:
-            self.driver.get(job_url)
-            
-            # Wait for content to load
-            time.sleep(1)
-            soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-            
-            job_data = {
-                'job_title': None,
-                'company_name': 'Greenhouse',
-                'location': None,
-                'job_description': None,
-                'employment_type': None,
-                'posted_date': None,
-                'source': 'greenhouse',
-                'job_url': job_url,
-                'department': None,
-                'skills': None,
-                'extracted_at': datetime.now().isoformat()
-            }
-            
-            # Extract title
-            title_elem = soup.find('h1')
-            if title_elem:
-                job_data['job_title'] = title_elem.get_text(strip=True)
-            
-            # Extract job details from meta sections
-            sections = soup.find_all('div', class_=re.compile('detail|section', re.I))
-            for section in sections:
-                text = section.get_text(strip=True)
+        max_retries = 2
+        for attempt in range(max_retries):
+            try:
+                self.driver.get(job_url)
                 
-                # Location
-                if 'location' in text.lower() and not job_data['location']:
-                    parts = text.split(':')
-                    if len(parts) > 1:
-                        job_data['location'] = parts[1].strip()
+                # Wait for content to load
+                time.sleep(1)
+                soup = BeautifulSoup(self.driver.page_source, 'html.parser')
                 
-                # Employment type
-                if 'type' in text.lower() and not job_data['employment_type']:
-                    parts = text.split(':')
-                    if len(parts) > 1:
-                        job_data['employment_type'] = parts[1].strip()
+                job_data = {
+                    'job_title': None,
+                    'company_name': 'Greenhouse',
+                    'location': None,
+                    'job_description': None,
+                    'employment_type': None,
+                    'posted_date': None,
+                    'source': 'greenhouse',
+                    'job_url': job_url,
+                    'department': None,
+                    'skills': None,
+                    'extracted_at': datetime.now().isoformat()
+                }
+                
+                # Extract title
+                title_elem = soup.find('h1')
+                if title_elem:
+                    job_data['job_title'] = title_elem.get_text(strip=True)
+                
+                # Extract job details from meta sections
+                sections = soup.find_all('div', class_=re.compile('detail|section', re.I))
+                for section in sections:
+                    text = section.get_text(strip=True)
+                    
+                    # Location
+                    if 'location' in text.lower() and not job_data['location']:
+                        parts = text.split(':')
+                        if len(parts) > 1:
+                            job_data['location'] = parts[1].strip()
+                    
+                    # Employment type
+                    if 'type' in text.lower() and not job_data['employment_type']:
+                        parts = text.split(':')
+                        if len(parts) > 1:
+                            job_data['employment_type'] = parts[1].strip()
+                
+                # Extract job description
+                main_content = soup.find('main') or soup.find('article') or soup.find(class_=re.compile('content|description', re.I))
+                if main_content:
+                    job_data['job_description'] = main_content.get_text(strip=True)[:2000]
+                
+                return job_data if job_data['job_title'] else None
             
-            # Extract job description
-            main_content = soup.find('main') or soup.find('article') or soup.find(class_=re.compile('content|description', re.I))
-            if main_content:
-                job_data['job_description'] = main_content.get_text(strip=True)[:2000]
-            
-            return job_data if job_data['job_title'] else None
-        
-        except Exception as e:
-            self.logger.error(f"Error parsing {job_url}: {e}")
-            return None
+            except Exception as e:
+                # If there's an invalid session error, reset the driver
+                if 'invalid session' in str(e).lower() and attempt < max_retries - 1:
+                    self.logger.warning(f"Session error on attempt {attempt + 1}, resetting driver...")
+                    try:
+                        self.cleanup()
+                    except:
+                        pass
+                    time.sleep(2)
+                    self.driver = self._setup_driver()
+                    continue
+                else:
+                    self.logger.error(f"Error parsing {job_url}: {e}")
+                    return None
 
 
 def main():
@@ -246,6 +296,15 @@ def main():
         for idx, link_data in enumerate(job_links, 1):
             if idx % 5 == 0 or idx == 1:
                 scraper.logger.info(f"  Parsing: [{idx}/{len(job_links)}] jobs...")
+            
+            # Recreate driver every 20 jobs to avoid session staling
+            if idx % 20 == 0:
+                try:
+                    scraper.cleanup()
+                except:
+                    pass
+                time.sleep(1)
+                scraper.driver = scraper._setup_driver()
             
             job_data = scraper.parse_job_details(link_data['url'])
             if job_data:
